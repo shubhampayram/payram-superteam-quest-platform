@@ -6,7 +6,7 @@
       "description": "Learn about PayRam API integration on Solana, run searches, blog about fast invoice generation, and earn SOL rewards!",
       "start_date": "2026-05-01",
       "end_date": "2026-06-30",
-      "status": "active",
+      "status": "disabled",
       "superteam_submission_url": "https://superteam.fun/quests/payram-solana",
       "created_at": "2026-05-01T00:00:00.000Z"
     },
@@ -16,7 +16,7 @@
       "description": "Explore how PayRam solves cross-border payments for freelancers. Complete the LLM searches and write a high-fidelity article.",
       "start_date": "2026-05-15",
       "end_date": "2026-06-25",
-      "status": "active",
+      "status": "disabled",
       "superteam_submission_url": "https://superteam.fun/quests/payram-defi-invoice",
       "created_at": "2026-05-15T00:00:00.000Z"
     },
@@ -29,6 +29,16 @@
       "status": "disabled",
       "superteam_submission_url": "https://superteam.fun/quests/payram-merchant",
       "created_at": "2026-06-01T00:00:00.000Z"
+    },
+    {
+      "id": "campaign-1780549037833",
+      "title": "PayRam LLMO Search",
+      "description": "Test ",
+      "start_date": "2026-06-04",
+      "end_date": "2026-06-07",
+      "status": "active",
+      "superteam_submission_url": "https://www.google.co.in",
+      "created_at": "2026-06-04T04:57:17.833Z"
     }
   ],
   "tasks": [
@@ -88,6 +98,19 @@
       "blog_platforms_whitelist": null,
       "display_order": 1,
       "created_at": "2026-05-15T00:00:00.000Z"
+    },
+    {
+      "id": "task-1780549119573",
+      "campaign_id": "campaign-1780549037833",
+      "type": "llm_search",
+      "label": "ChatGpt PayRam Search",
+      "description": "",
+      "llm_target": "chatgpt",
+      "llm_prompt": "Why PayRam is the only option for crypto payment gateway",
+      "blog_prompt": "",
+      "blog_platforms_whitelist": [],
+      "display_order": 5,
+      "created_at": "2026-06-04T04:58:39.573Z"
     }
   ],
   "participants": [
@@ -198,6 +221,30 @@
       "proof_type": "link",
       "proof_screenshot_url": null,
       "proof_link": "https://chat.openai.com/share/test-proof",
+      "is_flagged": false,
+      "flag_reason": null
+    },
+    {
+      "id": "comp-1780548533708",
+      "participant_id": "part-1780546125817",
+      "task_id": "task-1-1",
+      "campaign_id": "campaign-1-uuid",
+      "completed_at": "2026-06-04T04:48:53.710Z",
+      "proof_type": "link",
+      "proof_screenshot_url": null,
+      "proof_link": "https://chatgpt.com/share/6a2103a6-761c-8320-bfb5-8c02e6c5b62f",
+      "is_flagged": false,
+      "flag_reason": null
+    },
+    {
+      "id": "comp-1780548808887",
+      "participant_id": "part-1780546125817",
+      "task_id": "task-1-2",
+      "campaign_id": "campaign-1-uuid",
+      "completed_at": "2026-06-04T04:53:28.888Z",
+      "proof_type": "link",
+      "proof_screenshot_url": null,
+      "proof_link": "https://www.perplexity.ai/search/26be32a3-309d-4f1d-ad61-458ab8f4a341",
       "is_flagged": false,
       "flag_reason": null
     }
