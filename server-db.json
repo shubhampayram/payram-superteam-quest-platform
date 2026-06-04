@@ -248,5 +248,14 @@
       "is_flagged": false,
       "flag_reason": null
     }
-  ]
+  ],
+  "tags": [
+    {
+      "id": "tag-1780556166965",
+      "name": "PayRam",
+      "color": "#7C3AED",
+      "created_at": "2026-06-04T06:56:06.965Z"
+    }
+  ],
+  "task_tags": []
 }

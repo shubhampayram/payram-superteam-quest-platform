@@ -54,6 +54,7 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
   const [showTagPanel, setShowTagPanel] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0]);
+  const [tagError, setTagError] = useState('');
   const [taskSelectedTags, setTaskSelectedTags] = useState<Record<string, string[]>>({}); // taskId → tagIds
 
   const authHeaders = {
@@ -68,10 +69,15 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
         fetch('/api/campaigns', { headers: authHeaders }),
         fetch('/api/admin/tags', { headers: authHeaders })
       ]);
+      // 401 means server restarted and session expired — prompt re-login
+      if (campsRes.status === 401 || tagsRes.status === 401) {
+        setError('Session expired. Please log out and log in again.');
+        return;
+      }
       if (!campsRes.ok) { setError('Failed to load campaigns.'); return; }
       setCampaigns(await campsRes.json());
       if (tagsRes.ok) setAllTags(await tagsRes.json());
-    } catch { setError('Network error loading campaigns.'); }
+    } catch { setError('Network error. Make sure the dev server is running (npm run dev).'); }
     finally { setLoading(false); }
   };
 
@@ -80,13 +86,19 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
   // ── Tag helpers ───────────────────────────────────────────────────────────
   const handleCreateTag = async () => {
     if (!newTagName.trim()) return;
+    setTagError('');
     try {
       const res = await fetch('/api/admin/tags', {
         method: 'POST', headers: authHeaders,
         body: JSON.stringify({ name: newTagName.trim(), color: newTagColor })
       });
-      if (res.ok) { const t = await res.json(); setAllTags(prev => [...prev, t]); setNewTagName(''); }
-    } catch { /* silent */ }
+      const data = await res.json();
+      if (!res.ok) { setTagError(data.error || 'Failed to create tag.'); return; }
+      setAllTags(prev => [...prev, data]);
+      setNewTagName('');
+    } catch {
+      setTagError('Network error. Make sure the server is running.');
+    }
   };
 
   const handleDeleteTag = async (tagId: string) => {
@@ -581,6 +593,13 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
                   <Plus className="w-3.5 h-3.5" /><span>Create</span>
                 </button>
               </div>
+
+              {tagError && (
+                <p className="text-red-500 text-xs font-medium mb-3 flex items-center space-x-1">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{tagError}</span>
+                </p>
+              )}
 
               {/* Existing tags */}
               {allTags.length === 0 ? (
