@@ -215,14 +215,22 @@ app.post('/api/admin/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
 
-  const { data: admin } = await db().from('admins').select('*').eq('email', email.toLowerCase()).maybeSingle();
-  if (!admin || !admin.is_active) return res.status(401).json({ error: 'Invalid credentials.' });
+  try {
+    const { data: admin, error: dbErr } = await db().from('admins').select('*').eq('email', email.toLowerCase().trim()).maybeSingle();
+    console.log('[Login] email:', JSON.stringify(email.toLowerCase().trim()), 'found:', !!admin, 'dbErr:', dbErr?.message);
+    if (dbErr) return res.status(500).json({ error: 'DB error: ' + dbErr.message });
+    if (!admin || !admin.is_active) return res.status(401).json({ error: 'Invalid credentials.' });
 
-  const valid = await bcrypt.compare(password, admin.password_hash);
-  if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
+    const valid = await bcrypt.compare(password, admin.password_hash);
+    console.log('[Login] bcrypt valid:', valid);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
 
-  const token = await signToken(email.toLowerCase());
-  res.json({ success: true, user: { id: admin.id, email: admin.email, name: admin.name, token } });
+    const token = await signToken(email.toLowerCase().trim());
+    res.json({ success: true, user: { id: admin.id, email: admin.email, name: admin.name, token } });
+  } catch (e: any) {
+    console.error('[Login] Exception:', e.message);
+    res.status(500).json({ error: 'Server error: ' + e.message });
+  }
 });
 
 // ============================================================
