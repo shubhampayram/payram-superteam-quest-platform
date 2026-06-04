@@ -10,10 +10,13 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ── Supabase client ──────────────────────────────────────────────────────────
 let _supabase: SupabaseClient | null = null;
+// Strip BOM (﻿) that PowerShell sometimes injects when piping env vars
+const stripBOM = (s: string) => s.replace(/^﻿/, '').trim();
+
 function db(): SupabaseClient {
   if (!_supabase) {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = stripBOM(process.env.SUPABASE_URL || '');
+    const key = stripBOM(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
     if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
     _supabase = createClient(url, key);
   }
@@ -198,8 +201,8 @@ app.post('/api/completions', async (req, res) => {
 // ── Seed env-var admin into DB if not already present ──────────────────────
 async function seedEnvAdmin() {
   try {
-    const envEmail = process.env.ADMIN_EMAIL || 'admin@payram.co';
-    const envPassword = process.env.ADMIN_PASSWORD;
+    const envEmail = stripBOM(process.env.ADMIN_EMAIL || 'admin@payram.co');
+    const envPassword = stripBOM(process.env.ADMIN_PASSWORD || '');
     if (!envPassword) return;
     const { data } = await db().from('admins').select('id').eq('email', envEmail).maybeSingle();
     if (!data) {
