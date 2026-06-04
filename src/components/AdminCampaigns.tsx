@@ -186,8 +186,10 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
     const method = editingCampaign ? 'PUT' : 'POST';
     try {
       const res = await fetch(url, { method, headers: authHeaders, body: JSON.stringify(campForm) });
+      const data = await res.json();
       if (res.ok) { await loadCampaigns(); setViewState('list'); }
-    } catch { /* silent */ }
+      else setError(data.error || 'Failed to save campaign.');
+    } catch { setError('Network error. Make sure the server is running.'); }
   };
 
   const loadTasksForCampaign = async (camp: Campaign) => {

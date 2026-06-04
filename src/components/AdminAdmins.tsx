@@ -170,7 +170,7 @@ export default function AdminAdmins({ adminToken, currentEmail }: Props) {
       {/* Admin list */}
       <div className="space-y-2">
         {admins.map(admin => (
-          <div key={admin.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <div key={admin.id} className="bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-sm">
             {editId === admin.id ? (
               /* Edit mode */
               <div className="p-4 space-y-3">
@@ -213,17 +213,17 @@ export default function AdminAdmins({ adminToken, currentEmail }: Props) {
                 <div className="flex items-center space-x-3 min-w-0">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${admin.is_active ? 'bg-green-500' : 'bg-zinc-600'}`} />
                   <div className="min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-white truncate">{admin.name || admin.email}</span>
+                    <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                      <span className="text-sm font-semibold text-zinc-100 dark:text-white truncate">{admin.name || admin.email}</span>
                       {admin.email === currentEmail && (
-                        <span className="text-xs bg-violet-900/60 text-violet-300 px-1.5 py-0.5 rounded">you</span>
+                        <span className="text-xs bg-violet-600 text-white px-1.5 py-0.5 rounded font-medium">you</span>
                       )}
                       {!admin.is_active && (
-                        <span className="text-xs bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">inactive</span>
+                        <span className="text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded">inactive</span>
                       )}
                     </div>
-                    {admin.name && <p className="text-xs text-zinc-500 truncate">{admin.email}</p>}
-                    <p className="text-xs text-zinc-600">Added {new Date(admin.created_at).toLocaleDateString()}</p>
+                    {admin.name && <p className="text-xs text-zinc-400 truncate">{admin.email}</p>}
+                    <p className="text-xs text-zinc-500">Added {new Date(admin.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-1 flex-shrink-0">
