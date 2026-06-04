@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { SignJWT, jwtVerify } from 'jose';
+import bcrypt from 'bcryptjs';
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -194,20 +195,34 @@ app.post('/api/completions', async (req, res) => {
 // ADMIN AUTH
 // ============================================================
 
+// ── Seed env-var admin into DB if not already present ──────────────────────
+async function seedEnvAdmin() {
+  try {
+    const envEmail = process.env.ADMIN_EMAIL || 'admin@payram.co';
+    const envPassword = process.env.ADMIN_PASSWORD;
+    if (!envPassword) return;
+    const { data } = await db().from('admins').select('id').eq('email', envEmail).maybeSingle();
+    if (!data) {
+      const hash = await bcrypt.hash(envPassword, 10);
+      await db().from('admins').insert({ email: envEmail, password_hash: hash, name: 'Super Admin', is_active: true });
+      console.log('[Auth] Seeded env admin:', envEmail);
+    }
+  } catch (e) { console.error('[Auth] Seed error:', e); }
+}
+seedEnvAdmin();
+
 app.post('/api/admin/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required.' });
 
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@payram.co';
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) return res.status(500).json({ error: 'Server misconfigured: ADMIN_PASSWORD not set.' });
+  const { data: admin } = await db().from('admins').select('*').eq('email', email.toLowerCase()).maybeSingle();
+  if (!admin || !admin.is_active) return res.status(401).json({ error: 'Invalid credentials.' });
 
-  if (email !== adminEmail || password !== adminPassword) {
-    return res.status(401).json({ error: 'Invalid credentials.' });
-  }
+  const valid = await bcrypt.compare(password, admin.password_hash);
+  if (!valid) return res.status(401).json({ error: 'Invalid credentials.' });
 
-  const token = await signToken(email);
-  res.json({ success: true, user: { id: 'admin-1', email, token } });
+  const token = await signToken(email.toLowerCase());
+  res.json({ success: true, user: { id: admin.id, email: admin.email, name: admin.name, token } });
 });
 
 // ============================================================
@@ -323,6 +338,53 @@ app.get('/api/admin/chart-completions', requireAdmin, async (_req, res) => {
     chartData.push({ date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), completions: count ?? 0 });
   }
   res.json(chartData);
+});
+
+// ── Admin management routes ───────────────────────────────────────────────────
+app.get('/api/admin/admins', requireAdmin, async (_req, res) => {
+  const { data, error } = await db().from('admins').select('id, email, name, is_active, created_at').order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.post('/api/admin/admins', requireAdmin, async (req, res) => {
+  const { email, password, name } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  const hash = await bcrypt.hash(password, 10);
+  const { data, error } = await db().from('admins')
+    .insert({ email: email.toLowerCase().trim(), password_hash: hash, name: name?.trim() || null, is_active: true })
+    .select('id, email, name, is_active, created_at').single();
+  if (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'An admin with that email already exists.' });
+    return res.status(500).json({ error: error.message });
+  }
+  res.status(201).json(data);
+});
+
+app.patch('/api/admin/admins/:adminId', requireAdmin, async (req, res) => {
+  const { name, is_active, password } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (name !== undefined) updates.name = name?.trim() || null;
+  if (is_active !== undefined) updates.is_active = is_active;
+  if (password) {
+    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    updates.password_hash = await bcrypt.hash(password, 10);
+  }
+  const { data, error } = await db().from('admins')
+    .update(updates).eq('id', req.params.adminId)
+    .select('id, email, name, is_active, created_at').single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.delete('/api/admin/admins/:adminId', requireAdmin, async (req, res) => {
+  // Prevent deleting the last active admin
+  const { count } = await db().from('admins').select('*', { count: 'exact', head: true }).eq('is_active', true);
+  if ((count ?? 0) <= 1) return res.status(400).json({ error: 'Cannot delete the last active admin.' });
+  const { error } = await db().from('admins').delete().eq('id', req.params.adminId);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
 });
 
 // ── Tags routes ───────────────────────────────────────────────────────────────

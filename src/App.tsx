@@ -8,12 +8,13 @@ import AdminCampaigns from './components/AdminCampaigns.tsx';
 import AdminSubmissions from './components/AdminSubmissions.tsx';
 import AdminUsers from './components/AdminUsers.tsx';
 import AdminAnalytics from './components/AdminAnalytics.tsx';
+import AdminAdmins from './components/AdminAdmins.tsx';
 import { Campaign, Participant } from './types.ts';
-import { LogOut, LayoutDashboard, Flag, Users, Compass, BarChart2 } from 'lucide-react';
+import { LogOut, LayoutDashboard, Flag, Users, Compass, BarChart2, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
 
 type ScreenType = 'home' | 'campaigns' | 'tasks' | 'admin_login' | 'admin_dashboard';
-type AdminTab = 'dashboard' | 'campaigns' | 'submissions' | 'users' | 'analytics';
+type AdminTab = 'dashboard' | 'campaigns' | 'submissions' | 'users' | 'analytics' | 'admins';
 
 const PARTICIPANT_KEY = 'payram_participant_id';
 const ADMIN_SESSION_KEY = 'payram-admin-session';
@@ -22,7 +23,7 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenType>('home');
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('dashboard');
   const [participant, setParticipant] = useState<Participant | null>(null);
-  const [admin, setAdmin] = useState<{ id: string; email: string; token: string } | null>(null);
+  const [admin, setAdmin] = useState<{ id: string; email: string; name?: string; token: string } | null>(null);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
 
@@ -106,7 +107,8 @@ export default function App() {
                     { tab: 'campaigns'   as AdminTab, icon: <Compass className="w-4 h-4" />,         label: 'Campaigns'   },
                     { tab: 'submissions' as AdminTab, icon: <Flag className="w-4 h-4" />,            label: 'Submissions' },
                     { tab: 'users'       as AdminTab, icon: <Users className="w-4 h-4" />,           label: 'Users'       },
-                    { tab: 'analytics'   as AdminTab, icon: <BarChart2 className="w-4 h-4" />,       label: 'Analytics'   }
+                    { tab: 'analytics'   as AdminTab, icon: <BarChart2 className="w-4 h-4" />,       label: 'Analytics'   },
+                    { tab: 'admins'      as AdminTab, icon: <Shield className="w-4 h-4" />,           label: 'Admins'      }
                   ] as { tab: AdminTab; icon: React.ReactNode; label: string }[]
                 ).map(({ tab, icon, label }) => (
                   <button key={tab} onClick={() => setActiveAdminTab(tab)}
@@ -134,6 +136,7 @@ export default function App() {
               {activeAdminTab === 'submissions' && <AdminSubmissions adminToken={admin.token} />}
               {activeAdminTab === 'users'       && <AdminUsers adminToken={admin.token} />}
               {activeAdminTab === 'analytics'   && <AdminAnalytics adminToken={admin.token} />}
+              {activeAdminTab === 'admins'      && <AdminAdmins adminToken={admin.token} currentEmail={admin.email} />}
             </motion.div>
           </main>
 
