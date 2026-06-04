@@ -1,0 +1,205 @@
+{
+  "campaigns": [
+    {
+      "id": "campaign-1-uuid",
+      "title": "PayRam Solana Integration Challenge",
+      "description": "Learn about PayRam API integration on Solana, run searches, blog about fast invoice generation, and earn SOL rewards!",
+      "start_date": "2026-05-01",
+      "end_date": "2026-06-30",
+      "status": "active",
+      "superteam_submission_url": "https://superteam.fun/quests/payram-solana",
+      "created_at": "2026-05-01T00:00:00.000Z"
+    },
+    {
+      "id": "campaign-2-uuid",
+      "title": "DeFi Invoice Tooling Exploration",
+      "description": "Explore how PayRam solves cross-border payments for freelancers. Complete the LLM searches and write a high-fidelity article.",
+      "start_date": "2026-05-15",
+      "end_date": "2026-06-25",
+      "status": "active",
+      "superteam_submission_url": "https://superteam.fun/quests/payram-defi-invoice",
+      "created_at": "2026-05-15T00:00:00.000Z"
+    },
+    {
+      "id": "campaign-3-uuid",
+      "title": "PayRam Merchant SDK Beta Testing",
+      "description": "A developer campaign for testing out the beta merchant SDK.",
+      "start_date": "2026-06-01",
+      "end_date": "2026-07-01",
+      "status": "disabled",
+      "superteam_submission_url": "https://superteam.fun/quests/payram-merchant",
+      "created_at": "2026-06-01T00:00:00.000Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1-1",
+      "campaign_id": "campaign-1-uuid",
+      "type": "llm_search",
+      "label": "Compare PayRam with Solana Pay",
+      "description": "Go to ChatGPT and run an analysis comparing PayRam gasless features with native Solana Pay. Capture a screenshot.",
+      "llm_target": "chatgpt",
+      "llm_prompt": "Compare PayRam invoice management with Solana Pay. What are the key differences in gas costs, API simplicity, and multi-chain support?",
+      "blog_prompt": "",
+      "blog_platforms_whitelist": null,
+      "display_order": 1,
+      "created_at": "2026-05-01T00:00:00.000Z"
+    },
+    {
+      "id": "task-1-2",
+      "campaign_id": "campaign-1-uuid",
+      "type": "llm_search",
+      "label": "Query Perplexity on PayRam Backed Stablecoins",
+      "description": "Search on Perplexity about stablecoin support in PayRam. Paste your conversation link here.",
+      "llm_target": "perplexity",
+      "llm_prompt": "Which stablecoins does PayRam support for cross-border global payments? Outline their settlement speeds.",
+      "blog_prompt": "",
+      "blog_platforms_whitelist": null,
+      "display_order": 2,
+      "created_at": "2026-05-02T00:00:00.000Z"
+    },
+    {
+      "id": "task-1-3",
+      "campaign_id": "campaign-1-uuid",
+      "type": "blog",
+      "label": "Write a Blog Post: Speed of Merchant Payments",
+      "description": "Publish a review of the PayRam merchant flow on Medium, Substack, Hashnode or Dev.to.",
+      "llm_target": "",
+      "llm_prompt": "",
+      "blog_prompt": "Write a blog post answering: How does PayRam enable merchants to accept USDC on multiple chains with near-zero friction? (Focus on Solana, Base, and Arbitrum).",
+      "blog_platforms_whitelist": [
+        "Medium",
+        "Dev.to",
+        "Hashnode",
+        "Substack"
+      ],
+      "display_order": 3,
+      "created_at": "2026-05-03T00:00:00.000Z"
+    },
+    {
+      "id": "task-2-1",
+      "campaign_id": "campaign-2-uuid",
+      "type": "llm_search",
+      "label": "Claude Search for Freelancer Invoicing Integration",
+      "description": "Draft a short guide on why Web3 freelancers prefer PayRam over traditional invoice systems on Claude.",
+      "llm_target": "claude",
+      "llm_prompt": "Draft a short guide on why Web3 freelancers prefer PayRam over traditional invoice managers like Stripe or Deel.",
+      "blog_prompt": "",
+      "blog_platforms_whitelist": null,
+      "display_order": 1,
+      "created_at": "2026-05-15T00:00:00.000Z"
+    }
+  ],
+  "participants": [
+    {
+      "id": "part-1",
+      "superteam_username": "solana-master",
+      "email": "alex@solana.org",
+      "country": "United States",
+      "twitter_handle": "@sol_alex",
+      "created_at": "2026-05-10T12:00:00.000Z"
+    },
+    {
+      "id": "part-2",
+      "superteam_username": "bounty_hunter_99",
+      "email": "tony@superteam.fun",
+      "country": "Nigeria",
+      "twitter_handle": "@tonyhunts",
+      "created_at": "2026-05-12T14:30:00.000Z"
+    },
+    {
+      "id": "part-3",
+      "superteam_username": "cryptocody",
+      "email": "cody@gmail.com",
+      "country": "India",
+      "twitter_handle": "@cody_crypto",
+      "created_at": "2026-05-16T09:15:00.000Z"
+    },
+    {
+      "id": "part-1780496725517",
+      "superteam_username": "test-user-ci",
+      "email": "test@payram.co",
+      "country": "India",
+      "twitter_handle": "@testuser",
+      "created_at": "2026-06-03T14:25:25.517Z"
+    },
+    {
+      "id": "part-1780496866066",
+      "superteam_username": "ci-test-runner",
+      "email": "ci@payram.co",
+      "country": "India",
+      "twitter_handle": null,
+      "created_at": "2026-06-03T14:27:46.066Z"
+    },
+    {
+      "id": "part-1780546125817",
+      "superteam_username": "shubham_thadani",
+      "email": "shubham@tegro.com",
+      "country": "India",
+      "twitter_handle": null,
+      "created_at": "2026-06-04T04:08:45.817Z"
+    }
+  ],
+  "completions": [
+    {
+      "id": "comp-1",
+      "participant_id": "part-1",
+      "task_id": "task-1-1",
+      "campaign_id": "campaign-1-uuid",
+      "completed_at": "2026-05-11T16:20:00.000Z",
+      "proof_type": "screenshot",
+      "proof_screenshot_url": "/api/placeholder-screenshot?text=ChatGPT_Invoice_Search_Proof",
+      "proof_link": null,
+      "is_flagged": false,
+      "flag_reason": null
+    },
+    {
+      "id": "comp-2",
+      "participant_id": "part-1",
+      "task_id": "task-1-2",
+      "campaign_id": "campaign-1-uuid",
+      "completed_at": "2026-05-12T10:05:00.000Z",
+      "proof_type": "link",
+      "proof_screenshot_url": null,
+      "proof_link": "https://www.perplexity.ai/search/payram-settlement-speeds",
+      "is_flagged": false,
+      "flag_reason": null
+    },
+    {
+      "id": "comp-3",
+      "participant_id": "part-2",
+      "task_id": "task-1-1",
+      "campaign_id": "campaign-1-uuid",
+      "completed_at": "2026-05-13T08:44:00.000Z",
+      "proof_type": "screenshot",
+      "proof_screenshot_url": "/api/placeholder-screenshot?text=ChatGPT_SolanaPay_Proof_Flagged",
+      "proof_link": null,
+      "is_flagged": true,
+      "flag_reason": "Incomplete search output visible. Please redo and capture the entire browser screen."
+    },
+    {
+      "id": "comp-4",
+      "participant_id": "part-3",
+      "task_id": "task-2-1",
+      "campaign_id": "campaign-2-uuid",
+      "completed_at": "2026-05-18T11:30:00.000Z",
+      "proof_type": "link",
+      "proof_screenshot_url": null,
+      "proof_link": "https://claude.ai/share/freelance-billing-payram",
+      "is_flagged": false,
+      "flag_reason": null
+    },
+    {
+      "id": "comp-1780496881186",
+      "participant_id": "part-1780496866066",
+      "task_id": "task-1-1",
+      "campaign_id": "campaign-1-uuid",
+      "completed_at": "2026-06-03T14:28:01.186Z",
+      "proof_type": "link",
+      "proof_screenshot_url": null,
+      "proof_link": "https://chat.openai.com/share/test-proof",
+      "is_flagged": false,
+      "flag_reason": null
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "PayRam Community Quest Platform",
+  "description": "A comprehensive quest platform for PayRam community tasks, complete with participant and admin dashboards, LLM search validation, blog proof review, and Supabase RLS integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
