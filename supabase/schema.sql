@@ -191,6 +191,55 @@ CREATE POLICY "admin_read_own_record" ON admin_users
 --   Roles: authenticated
 --   USING: true
 
+-- ── TAGS (admin-internal labels) ────────────────────────────────────────────
+
+CREATE TABLE tags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    color TEXT NOT NULL DEFAULT '#7C3AED',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE task_tags (
+    task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    tag_id  UUID NOT NULL REFERENCES tags(id)  ON DELETE CASCADE,
+    PRIMARY KEY (task_id, tag_id)
+);
+
+ALTER TABLE tags      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE task_tags ENABLE ROW LEVEL SECURITY;
+
+-- Only authenticated admins can read/write tags
+CREATE POLICY "admin_all_tags" ON tags
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY "admin_all_task_tags" ON task_tags
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ── ERROR REPORTS ─────────────────────────────────────────────────────────────
+
+CREATE TABLE error_reports (
+    id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    participant_id UUID REFERENCES participants(id) ON DELETE SET NULL,
+    page           TEXT,
+    description    TEXT NOT NULL,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    is_resolved    BOOLEAN NOT NULL DEFAULT false
+);
+
+ALTER TABLE error_reports ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can submit a report (participants have no auth)
+CREATE POLICY "public_insert_error_report" ON error_reports
+    FOR INSERT WITH CHECK (true);
+
+-- Only authenticated admins can read and update
+CREATE POLICY "admin_read_error_reports" ON error_reports
+    FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "admin_update_error_reports" ON error_reports
+    FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
 -- ── FIRST ADMIN SETUP ─────────────────────
 -- After creating your admin via Supabase Auth dashboard, run:
 --

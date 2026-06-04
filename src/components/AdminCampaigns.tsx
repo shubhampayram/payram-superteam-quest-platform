@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Campaign, Task } from '../types.ts';
-import { buildLLMUrl } from '../lib/llm-utils.ts';
+import { Campaign, Task, Tag } from '../types.ts';
+import { buildLLMUrl, LLM_TARGETS, getLLMInfo } from '../lib/llm-utils.ts';
 import {
-  Plus, Edit, Eye, Trash2, Calendar, Check, ToggleLeft, ToggleRight,
-  ArrowLeft, Sparkles, FileText, MoveUp, MoveDown, AlertCircle, Loader2
+  Plus, Edit, Eye, Trash2, Check, ToggleLeft, ToggleRight,
+  ArrowLeft, Sparkles, FileText, MoveUp, MoveDown, AlertCircle, Loader2, Tag as TagIcon, X
 } from 'lucide-react';
 
 interface AdminCampaignsProps {
   adminToken: string;
 }
+
+const TAG_PALETTE = [
+  '#7C3AED', '#FF007F', '#10B981', '#F59E0B', '#3B82F6',
+  '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#84CC16'
+];
 
 export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -44,6 +49,13 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
 
   const BLOG_PLATFORMS = ['Medium', 'Dev.to', 'Hashnode', 'Substack', 'Any URL'];
 
+  // ── Tags state ────────────────────────────────────────────────────────────
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [showTagPanel, setShowTagPanel] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState(TAG_PALETTE[0]);
+  const [taskSelectedTags, setTaskSelectedTags] = useState<Record<string, string[]>>({}); // taskId → tagIds
+
   const authHeaders = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${adminToken}`
@@ -51,19 +63,60 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
 
   const loadCampaigns = async () => {
     try {
-      setLoading(true);
-      setError('');
-      const res = await fetch('/api/campaigns', { headers: authHeaders });
-      if (!res.ok) { setError('Failed to load campaigns.'); return; }
-      setCampaigns(await res.json());
-    } catch {
-      setError('Network error loading campaigns.');
-    } finally {
-      setLoading(false);
-    }
+      setLoading(true); setError('');
+      const [campsRes, tagsRes] = await Promise.all([
+        fetch('/api/campaigns', { headers: authHeaders }),
+        fetch('/api/admin/tags', { headers: authHeaders })
+      ]);
+      if (!campsRes.ok) { setError('Failed to load campaigns.'); return; }
+      setCampaigns(await campsRes.json());
+      if (tagsRes.ok) setAllTags(await tagsRes.json());
+    } catch { setError('Network error loading campaigns.'); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { loadCampaigns(); }, []);
+
+  // ── Tag helpers ───────────────────────────────────────────────────────────
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      const res = await fetch('/api/admin/tags', {
+        method: 'POST', headers: authHeaders,
+        body: JSON.stringify({ name: newTagName.trim(), color: newTagColor })
+      });
+      if (res.ok) { const t = await res.json(); setAllTags(prev => [...prev, t]); setNewTagName(''); }
+    } catch { /* silent */ }
+  };
+
+  const handleDeleteTag = async (tagId: string) => {
+    try {
+      const res = await fetch(`/api/admin/tags/${tagId}`, { method: 'DELETE', headers: authHeaders });
+      if (res.ok) { setAllTags(prev => prev.filter(t => t.id !== tagId)); }
+    } catch { /* silent */ }
+  };
+
+  const loadTagsForTask = async (taskId: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/tags`, { headers: authHeaders });
+      if (res.ok) {
+        const tags: Tag[] = await res.json();
+        setTaskSelectedTags(prev => ({ ...prev, [taskId]: tags.map(t => t.id) }));
+      }
+    } catch { /* silent */ }
+  };
+
+  const handleToggleTaskTag = async (taskId: string, tagId: string) => {
+    const current = taskSelectedTags[taskId] || [];
+    const next = current.includes(tagId) ? current.filter(id => id !== tagId) : [...current, tagId];
+    setTaskSelectedTags(prev => ({ ...prev, [taskId]: next }));
+    try {
+      await fetch(`/api/tasks/${taskId}/tags`, {
+        method: 'PUT', headers: authHeaders,
+        body: JSON.stringify({ tag_ids: next })
+      });
+    } catch { /* silent */ }
+  };
 
   const dateShort = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
@@ -141,6 +194,7 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
     setViewState('tasks_view');
     setShowTaskForm(false);
     setEditingTask(null);
+    setShowTagPanel(false);
   };
 
   const handleMoveTaskOrder = async (task: Task, direction: 'up' | 'down') => {
@@ -470,10 +524,84 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
           </div>
 
           <div className="bg-white dark:bg-[#13131A] border border-zinc-200 dark:border-zinc-900 rounded-2xl p-6 shadow-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider font-mono text-zinc-400 block">Managing tasks for</span>
-            <h3 className="font-extrabold text-xl text-zinc-950 dark:text-white mt-2">{selectedCampaignForTasks.title}</h3>
-            <p className="text-xs text-zinc-400 font-semibold mt-1">Status: {selectedCampaignForTasks.status}</p>
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider font-mono text-zinc-400 block">Managing tasks for</span>
+                <h3 className="font-extrabold text-xl text-zinc-950 dark:text-white mt-2">{selectedCampaignForTasks.title}</h3>
+                <p className="text-xs text-zinc-400 font-semibold mt-1">Status: {selectedCampaignForTasks.status}</p>
+              </div>
+              <button
+                onClick={() => setShowTagPanel(!showTagPanel)}
+                className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border cursor-pointer transition-colors ${
+                  showTagPanel ? 'bg-[#7C3AED] text-white border-[#7C3AED]' : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100'
+                }`}
+              >
+                <TagIcon className="w-3.5 h-3.5" />
+                <span>Manage Tags</span>
+                {allTags.length > 0 && <span className="ml-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.5 rounded text-[10px] font-black">{allTags.length}</span>}
+              </button>
+            </div>
           </div>
+
+          {/* ── TAGS MANAGEMENT PANEL ── */}
+          {showTagPanel && (
+            <div className="bg-white dark:bg-[#13131A] border border-zinc-200 dark:border-zinc-900 rounded-2xl p-6 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-wider text-zinc-500 font-mono mb-4 flex items-center space-x-2">
+                <TagIcon className="w-3.5 h-3.5 text-[#7C3AED]" />
+                <span>Tag Library — Internal Use Only</span>
+              </p>
+              <p className="text-[10px] text-zinc-400 mb-5">Tags are admin-only labels. Participants cannot see them.</p>
+
+              {/* Create new tag */}
+              <div className="flex flex-wrap gap-3 items-end mb-5 pb-5 border-b border-zinc-100 dark:border-zinc-900">
+                <div className="flex-1 min-w-[140px]">
+                  <label className="block text-[10px] font-black uppercase text-zinc-400 mb-1.5">Tag Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Product Related"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-2.5 px-3 text-xs focus:outline-none focus:border-[#7C3AED]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-zinc-400 mb-1.5">Colour</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TAG_PALETTE.map(color => (
+                      <button key={color} type="button" onClick={() => setNewTagColor(color)}
+                        className={`w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 ${newTagColor === color ? 'ring-2 ring-offset-2 ring-zinc-400 scale-110' : ''}`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <button onClick={handleCreateTag} disabled={!newTagName.trim()}
+                  className="flex items-center space-x-1 bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase cursor-pointer disabled:opacity-40 transition-colors">
+                  <Plus className="w-3.5 h-3.5" /><span>Create</span>
+                </button>
+              </div>
+
+              {/* Existing tags */}
+              {allTags.length === 0 ? (
+                <p className="text-xs text-zinc-400 text-center py-4">No tags yet. Create one above.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map(tag => (
+                    <div key={tag.id} className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full border text-xs font-bold"
+                      style={{ backgroundColor: tag.color + '20', color: tag.color, borderColor: tag.color + '40' }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                      <span>{tag.name}</span>
+                      <button onClick={() => handleDeleteTag(tag.id)}
+                        className="ml-0.5 hover:opacity-60 cursor-pointer transition-opacity">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Task Form */}
           {showTaskForm && (
@@ -550,10 +678,9 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
                         onChange={(e) => setTaskForm(prev => ({ ...prev, llm_target: e.target.value as any }))}
                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 px-3 text-xs focus:outline-none text-zinc-700 dark:text-zinc-200"
                       >
-                        <option value="chatgpt">ChatGPT</option>
-                        <option value="perplexity">Perplexity</option>
-                        <option value="gemini">Gemini</option>
-                        <option value="claude">Claude</option>
+                        {LLM_TARGETS.map(target => (
+                          <option key={target} value={target}>{getLLMInfo(target).label}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -657,10 +784,15 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
               <div className="space-y-4">
                 {campaignTasks
                   .sort((a, b) => a.display_order - b.display_order)
-                  .map((task, idx) => (
+                  .map((task, idx) => {
+                  // Load tags for this task the first time it renders
+                  if (allTags.length > 0 && taskSelectedTags[task.id] === undefined) {
+                    loadTagsForTask(task.id);
+                  }
+                  return (
                     <div
                       key={task.id}
-                      className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center justify-between hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                      className="p-5 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors space-y-3"
                     >
                       <div className="flex items-start space-x-3.5">
                         <div className="flex flex-col space-y-1">
@@ -712,8 +844,32 @@ export default function AdminCampaigns({ adminToken }: AdminCampaignsProps) {
                           Delete
                         </button>
                       </div>
+
+                      {/* Tag assignment — shown when tags exist, admin-internal only */}
+                      {allTags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 items-center pt-3 border-t border-zinc-100 dark:border-zinc-900">
+                          <span className="text-[9px] font-black uppercase text-zinc-400 tracking-wider">Tags:</span>
+                          {allTags.map(tag => {
+                            const isActive = (taskSelectedTags[task.id] || []).includes(tag.id);
+                            return (
+                              <button key={tag.id} type="button"
+                                onClick={() => handleToggleTaskTag(task.id, tag.id)}
+                                className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[10px] font-bold cursor-pointer transition-all ${isActive ? 'opacity-100' : 'opacity-30 hover:opacity-60'}`}
+                                style={isActive
+                                  ? { backgroundColor: tag.color + '20', color: tag.color, borderColor: tag.color + '40' }
+                                  : { color: tag.color, borderColor: tag.color + '40' }
+                                }
+                              >
+                                {isActive && <Check className="w-2.5 h-2.5" />}
+                                <span>{tag.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             )}
           </div>

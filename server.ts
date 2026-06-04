@@ -260,6 +260,140 @@ app.get('/api/admin/chart-completions', requireAdmin, (_req, res) => {
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+// ── Tags routes ───────────────────────────────────────────────────────────────
+app.get('/api/admin/tags', requireAdmin, (_req, res) => {
+  const db = readDB();
+  res.json(db.tags || []);
+});
+
+app.post('/api/admin/tags', requireAdmin, (req, res) => {
+  const { name, color } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Tag name required.' });
+  const db = readDB();
+  if (!db.tags) db.tags = [];
+  if (!db.task_tags) db.task_tags = [];
+  if (db.tags.find((t: any) => t.name.toLowerCase() === name.trim().toLowerCase())) {
+    return res.status(400).json({ error: 'A tag with this name already exists.' });
+  }
+  const tag = { id: 'tag-' + Date.now(), name: name.trim(), color: color || '#7C3AED', created_at: new Date().toISOString() };
+  db.tags.push(tag); writeDB(db);
+  res.status(201).json(tag);
+});
+
+app.delete('/api/admin/tags/:tagId', requireAdmin, (req, res) => {
+  const db = readDB();
+  if (!db.tags) return res.json({ success: true });
+  const idx = db.tags.findIndex((t: any) => t.id === req.params.tagId);
+  if (idx === -1) return res.status(404).json({ error: 'Tag not found.' });
+  db.tags.splice(idx, 1);
+  db.task_tags = (db.task_tags || []).filter((tt: any) => tt.tag_id !== req.params.tagId);
+  writeDB(db); res.json({ success: true });
+});
+
+app.get('/api/tasks/:taskId/tags', requireAdmin, (req, res) => {
+  const db = readDB();
+  const tagIds = (db.task_tags || []).filter((tt: any) => tt.task_id === req.params.taskId).map((tt: any) => tt.tag_id);
+  const tags = (db.tags || []).filter((t: any) => tagIds.includes(t.id));
+  res.json(tags);
+});
+
+app.put('/api/tasks/:taskId/tags', requireAdmin, (req, res) => {
+  const { tag_ids } = req.body;
+  const db = readDB();
+  if (!db.task_tags) db.task_tags = [];
+  db.task_tags = db.task_tags.filter((tt: any) => tt.task_id !== req.params.taskId);
+  if (Array.isArray(tag_ids)) {
+    tag_ids.forEach((tagId: string) => db.task_tags.push({ task_id: req.params.taskId, tag_id: tagId }));
+  }
+  writeDB(db); res.json({ success: true });
+});
+
+// ── Analytics route ───────────────────────────────────────────────────────────
+app.get('/api/admin/analytics', requireAdmin, (_req, res) => {
+  const db = readDB();
+  const { campaigns, tasks, completions } = db;
+  const tags = db.tags || [];
+  const taskTags = db.task_tags || [];
+
+  // LLM stats
+  const llmMap: Record<string, number> = {};
+  completions.forEach((c: TaskCompletion) => {
+    const task = tasks.find((t: any) => t.id === c.task_id);
+    if (task?.type === 'llm_search' && task.llm_target) {
+      llmMap[task.llm_target] = (llmMap[task.llm_target] || 0) + 1;
+    }
+  });
+  const llmStats = Object.entries(llmMap).map(([target, count]) => ({
+    target, label: target.charAt(0).toUpperCase() + target.slice(1), completions: count
+  }));
+
+  // Campaign stats
+  const campaignStats = campaigns.map((camp: Campaign) => {
+    const campCompletions = completions.filter((c: TaskCompletion) => c.campaign_id === camp.id);
+    return {
+      id: camp.id, title: camp.title, status: camp.status,
+      totalTasks: tasks.filter((t: any) => t.campaign_id === camp.id).length,
+      totalCompletions: campCompletions.length,
+      uniqueParticipants: new Set(campCompletions.map((c: TaskCompletion) => c.participant_id)).size,
+      flaggedCount: campCompletions.filter((c: TaskCompletion) => c.is_flagged).length
+    };
+  });
+
+  // Task stats
+  const taskStats = tasks.map((task: any) => {
+    const tc = completions.filter((c: TaskCompletion) => c.task_id === task.id);
+    const camp = campaigns.find((c: Campaign) => c.id === task.campaign_id);
+    const tagIds = taskTags.filter((tt: any) => tt.task_id === task.id).map((tt: any) => tt.tag_id);
+    return {
+      id: task.id, label: task.label, type: task.type, llm_target: task.llm_target,
+      campaignTitle: camp?.title || 'Unknown',
+      totalCompletions: tc.length,
+      screenshotCount: tc.filter((c: TaskCompletion) => c.proof_type === 'screenshot').length,
+      linkCount: tc.filter((c: TaskCompletion) => c.proof_type === 'link').length,
+      flaggedCount: tc.filter((c: TaskCompletion) => c.is_flagged).length,
+      tags: tagIds.map((id: string) => tags.find((t: any) => t.id === id)?.name).filter(Boolean)
+    };
+  });
+
+  // Tag stats
+  const tagStats = tags.map((tag: any) => {
+    const taggedTaskIds = taskTags.filter((tt: any) => tt.tag_id === tag.id).map((tt: any) => tt.task_id);
+    const tc = completions.filter((c: TaskCompletion) => taggedTaskIds.includes(c.task_id));
+    return {
+      id: tag.id, name: tag.name, color: tag.color,
+      tasksCount: taggedTaskIds.length, completionsCount: tc.length,
+      flaggedCount: tc.filter((c: TaskCompletion) => c.is_flagged).length
+    };
+  });
+
+  res.json({ llmStats, campaignStats, taskStats, tagStats });
+});
+
+// ── Error reports routes ──────────────────────────────────────────────────────
+app.get('/api/error-reports', requireAdmin, (_req, res) => {
+  const db = readDB();
+  res.json(db.error_reports || []);
+});
+
+app.post('/api/error-reports', (req, res) => {
+  const { participant_id, page, description } = req.body;
+  if (!description?.trim()) return res.status(400).json({ error: 'Description required.' });
+  const db = readDB();
+  if (!db.error_reports) db.error_reports = [];
+  const report = { id: 'report-' + Date.now(), participant_id: participant_id || null, page: page || 'unknown', description: description.trim(), created_at: new Date().toISOString(), is_resolved: false };
+  db.error_reports.push(report); writeDB(db);
+  res.status(201).json(report);
+});
+
+app.put('/api/error-reports/:id/resolve', requireAdmin, (req, res) => {
+  const db = readDB();
+  if (!db.error_reports) return res.status(404).json({ error: 'Not found.' });
+  const idx = db.error_reports.findIndex((r: any) => r.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Not found.' });
+  db.error_reports[idx].is_resolved = true; writeDB(db);
+  res.json(db.error_reports[idx]);
+});
+
 // Start with Vite dev middleware
 createViteServer({ server: { middlewareMode: true }, appType: 'spa' }).then((vite) => {
   app.use(vite.middlewares);

@@ -325,4 +325,133 @@ app.get('/api/admin/chart-completions', requireAdmin, async (_req, res) => {
   res.json(chartData);
 });
 
+// ── Tags routes ───────────────────────────────────────────────────────────────
+app.get('/api/admin/tags', requireAdmin, async (_req, res) => {
+  const { data, error } = await db().from('tags').select('*').order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.post('/api/admin/tags', requireAdmin, async (req, res) => {
+  const { name, color } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Tag name required.' });
+  const { data, error } = await db()
+    .from('tags').insert({ name: name.trim(), color: color || '#7C3AED' }).select().single();
+  if (error) return res.status(error.code === '23505' ? 400 : 500).json({ error: error.code === '23505' ? 'Tag name already exists.' : error.message });
+  res.status(201).json(data);
+});
+
+app.delete('/api/admin/tags/:tagId', requireAdmin, async (req, res) => {
+  const { error } = await db().from('tags').delete().eq('id', req.params.tagId);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+app.get('/api/tasks/:taskId/tags', requireAdmin, async (req, res) => {
+  const { data, error } = await db()
+    .from('task_tags').select('tag_id, tags(*)').eq('task_id', req.params.taskId);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json((data || []).map((row: any) => row.tags));
+});
+
+app.put('/api/tasks/:taskId/tags', requireAdmin, async (req, res) => {
+  const { tag_ids } = req.body;
+  await db().from('task_tags').delete().eq('task_id', req.params.taskId);
+  if (Array.isArray(tag_ids) && tag_ids.length > 0) {
+    await db().from('task_tags').insert(tag_ids.map((tagId: string) => ({ task_id: req.params.taskId, tag_id: tagId })));
+  }
+  res.json({ success: true });
+});
+
+// ── Analytics route ───────────────────────────────────────────────────────────
+app.get('/api/admin/analytics', requireAdmin, async (_req, res) => {
+  const [campsRes, tasksRes, compsRes, tagsRes, taskTagsRes] = await Promise.all([
+    db().from('campaigns').select('*'),
+    db().from('tasks').select('*'),
+    db().from('task_completions').select('*'),
+    db().from('tags').select('*'),
+    db().from('task_tags').select('*')
+  ]);
+
+  const campaigns = campsRes.data || [];
+  const tasks = tasksRes.data || [];
+  const completions = compsRes.data || [];
+  const tags = tagsRes.data || [];
+  const taskTags = taskTagsRes.data || [];
+
+  const llmMap: Record<string, number> = {};
+  completions.forEach((c: any) => {
+    const task = tasks.find((t: any) => t.id === c.task_id);
+    if (task?.type === 'llm_search' && task.llm_target) {
+      llmMap[task.llm_target] = (llmMap[task.llm_target] || 0) + 1;
+    }
+  });
+  const llmStats = Object.entries(llmMap).map(([target, count]) => ({
+    target, label: target.charAt(0).toUpperCase() + target.slice(1), completions: count
+  }));
+
+  const campaignStats = campaigns.map((camp: any) => {
+    const cc = completions.filter((c: any) => c.campaign_id === camp.id);
+    return {
+      id: camp.id, title: camp.title, status: camp.status,
+      totalTasks: tasks.filter((t: any) => t.campaign_id === camp.id).length,
+      totalCompletions: cc.length,
+      uniqueParticipants: new Set(cc.map((c: any) => c.participant_id)).size,
+      flaggedCount: cc.filter((c: any) => c.is_flagged).length
+    };
+  });
+
+  const taskStats = tasks.map((task: any) => {
+    const tc = completions.filter((c: any) => c.task_id === task.id);
+    const camp = campaigns.find((c: any) => c.id === task.campaign_id);
+    const tagIds = taskTags.filter((tt: any) => tt.task_id === task.id).map((tt: any) => tt.tag_id);
+    return {
+      id: task.id, label: task.label, type: task.type, llm_target: task.llm_target,
+      campaignTitle: camp?.title || 'Unknown',
+      totalCompletions: tc.length,
+      screenshotCount: tc.filter((c: any) => c.proof_type === 'screenshot').length,
+      linkCount: tc.filter((c: any) => c.proof_type === 'link').length,
+      flaggedCount: tc.filter((c: any) => c.is_flagged).length,
+      tags: tagIds.map((id: string) => tags.find((t: any) => t.id === id)?.name).filter(Boolean)
+    };
+  });
+
+  const tagStats = tags.map((tag: any) => {
+    const taggedTaskIds = taskTags.filter((tt: any) => tt.tag_id === tag.id).map((tt: any) => tt.task_id);
+    const tc = completions.filter((c: any) => taggedTaskIds.includes(c.task_id));
+    return {
+      id: tag.id, name: tag.name, color: tag.color,
+      tasksCount: taggedTaskIds.length, completionsCount: tc.length,
+      flaggedCount: tc.filter((c: any) => c.is_flagged).length
+    };
+  });
+
+  res.json({ llmStats, campaignStats, taskStats, tagStats });
+});
+
+// ── Error reports routes ──────────────────────────────────────────────────────
+app.get('/api/error-reports', requireAdmin, async (_req, res) => {
+  const { data, error } = await db().from('error_reports').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.post('/api/error-reports', async (req, res) => {
+  const { participant_id, page, description } = req.body;
+  if (!description?.trim()) return res.status(400).json({ error: 'Description required.' });
+  const { data, error } = await db()
+    .from('error_reports')
+    .insert({ participant_id: participant_id || null, page: page || 'unknown', description: description.trim(), is_resolved: false })
+    .select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.status(201).json(data);
+});
+
+app.put('/api/error-reports/:id/resolve', requireAdmin, async (req, res) => {
+  const { data, error } = await db()
+    .from('error_reports').update({ is_resolved: true }).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 export default app;
